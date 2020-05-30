@@ -51,6 +51,9 @@ function registerEvents(bot) {
             case 'topDonors':
                 showTopDonors(msg, bot.poppySeedToken);
                 break;
+            case 'latestItems':
+                showLatestItems(msg, bot.poppySeedToken);
+                break;
         }
     });
 }
@@ -87,7 +90,8 @@ async function login(username, password) {
 function showHelp(message, token) {
         let helpMessage = 
             "Look what I can do! \n"
-            + ".topDonors";
+            + ".topDonors \n"
+            + ".latestItems"
 
         message.reply(helpMessage);
 }
@@ -103,7 +107,7 @@ function donorView(users) {
     let message = "The top donors are:";
     let topDonors = users
         .map(u => u.user.name)
-        .reduce((first, rest) => first + "\n" + rest);
+        .reduce(joinStr("\n"));
 
     return message + "\n" + topDonors;
 }
@@ -112,6 +116,62 @@ async function getTopDonors(token) {
     return axios({
         method: 'get'
         , url: 'https://api.poppyseedpets.com/museum/topDonors?page=0'
+        , headers: {
+            'Authorization': 'Bearer ' + token
+        }
+    }).then(res => {
+        return res.data.data.results;
+    }).catch(err => {
+        console.log(err);
+    });
+}
+
+//https://api.poppyseedpets.com/encyclopedia/item?page=0&orderBy=id&orderDir=reverse
+// https://poppyseedpets.com/assets/images/items/IMAGE_STRING_HERE.svg
+async function showLatestItems(message, token) {
+    const items = await getLatestItems(token);
+    message.reply(itemsView(items));
+}
+
+function itemsView(items) {
+    let message = "The latest items are:";
+    let latestItems = items
+        .map(itemView)
+        .filter(first(10))
+        .map(addSpace(3))
+        .reduce(joinStr("\n"));
+
+    return message + "\n" + latestItems;
+}
+
+function first(num) {
+    return (value, index) => index <= num;
+}
+
+function addSpace(num) {
+    return item => item + "\n".repeat(num); 
+}
+
+function itemView(item) {
+    const {name, description} = item;
+    const desc = 
+        (description === null) 
+        ? "" 
+        : ": " + description;
+
+    return name + desc;
+}
+
+function joinStr(delimiter) {
+    return (first, rest) => 
+        first + delimiter + rest
+}
+
+
+async function getLatestItems(token) {
+    return axios({
+        method: 'get'
+        , url: 'https://api.poppyseedpets.com/encyclopedia/item?page=0&orderBy=id&orderDir=reverse'
         , headers: {
             'Authorization': 'Bearer ' + token
         }
