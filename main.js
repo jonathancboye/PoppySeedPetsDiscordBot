@@ -126,7 +126,6 @@ async function getTopDonors(token) {
     });
 }
 
-//https://api.poppyseedpets.com/encyclopedia/item?page=0&orderBy=id&orderDir=reverse
 // https://poppyseedpets.com/assets/images/items/IMAGE_STRING_HERE.svg
 async function showLatestItems(message, token) {
     const items = await getLatestItems(token);
@@ -138,7 +137,7 @@ function itemsView(items) {
     let latestItems = items
         .map(itemView)
         .filter(first(10))
-        .map(addSpace(3))
+        .map(addSpace(1))
         .reduce(joinStr("\n"));
 
     return message + "\n" + latestItems;
