@@ -8,7 +8,7 @@ const poppySeedUserName = process.env.POPPYSEEDUSERNAME;
 const poppySeedPassword = process.env.POPPYSEEDPASSWORD;
 
 const snowFlakes = {
-    botsNStuff : "716195516328968264"
+    botsNStuff: "716195516328968264"
 };
 
 (async (client
@@ -17,7 +17,7 @@ const snowFlakes = {
     , poppySeedPassword
 ) => {
     await client.login(discordToken);
-    
+
     const poppySeedToken =
         await login(poppySeedUserName, poppySeedPassword);
     const channel =
@@ -88,16 +88,16 @@ async function login(username, password) {
 }
 
 function showHelp(message, token) {
-        let helpMessage = 
-            "Look what I can do! \n"
-            + ".topDonors \n"
-            + ".latestItems"
+    let helpMessage =
+        "Look what I can do! \n"
+        + ".topDonors \n"
+        + ".latestItems"
 
-        message.reply(helpMessage);
+    message.reply(helpMessage);
 }
 
 async function showTopDonors(message, token) {
-    const donors = 
+    const donors =
         await getTopDonors(token);
 
     message.reply(donorView(donors));
@@ -126,7 +126,6 @@ async function getTopDonors(token) {
     });
 }
 
-// https://poppyseedpets.com/assets/images/items/IMAGE_STRING_HERE.svg
 async function showLatestItems(message, token) {
     const items = await getLatestItems(token);
     message.reply(itemsView(items));
@@ -137,10 +136,14 @@ function itemsView(items) {
     let latestItems = items
         .map(itemView)
         .filter(first(10))
-        .map(addSpace(1))
-        .reduce(joinStr("\n"));
 
-    return message + "\n" + latestItems;
+    let embed = new Discord.MessageEmbed()
+        .setColor('#0099ff')
+        .setTitle("Latest Items")
+    latestItems.forEach(item => embed.addField(item.name, item.value));
+
+    console.log(embed);
+    return embed;
 }
 
 function first(num) {
@@ -148,21 +151,32 @@ function first(num) {
 }
 
 function addSpace(num) {
-    return item => item + "\n".repeat(num); 
+    return item => item + "\n".repeat(num);
 }
 
 function itemView(item) {
-    const {name, description} = item;
-    const desc = 
-        (description === null) 
-        ? "" 
-        : ": " + description;
+    const { name, description, image } = item;
+    const desc =
+        (description === null)
+            ? "_"
+            : description;
 
-    return name + desc;
+    return { 
+        name: name,
+        value: desc + "\n" + getItemImageUrl(image),
+        inline: false
+    }
+}
+
+async function showItemImage(message, token, itemImage) {
+    const image =
+        await getItemImage(token, itemImage);
+
+    message.reply(image);
 }
 
 function joinStr(delimiter) {
-    return (first, rest) => 
+    return (first, rest) =>
         first + delimiter + rest
 }
 
@@ -171,6 +185,24 @@ async function getLatestItems(token) {
     return axios({
         method: 'get'
         , url: 'https://api.poppyseedpets.com/encyclopedia/item?page=0&orderBy=id&orderDir=reverse'
+        , headers: {
+            'Authorization': 'Bearer ' + token
+        }
+    }).then(res => {
+        return res.data.data.results;
+    }).catch(err => {
+        console.log(err);
+    });
+}
+
+function getItemImageUrl(image) {
+    return `https://poppyseedpets.com/assets/images/items/${image}.svg`;
+}
+
+async function getItemImage(token, image) {
+    return axios({
+        method: 'get'
+        , url: `https://poppyseedpets.com/assets/images/items/${image}.svg`
         , headers: {
             'Authorization': 'Bearer ' + token
         }
