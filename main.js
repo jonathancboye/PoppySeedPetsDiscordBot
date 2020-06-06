@@ -4,6 +4,7 @@ const axios = require('axios').default;
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
+const R = require('ramda');
 
 const client = new Discord.Client();
 const discordToken = process.env.POPPYSEEDPETSBOTTOKEN;
@@ -179,9 +180,6 @@ async function itemView(item) {
 }
 
 async function attachFiles(download, embed, image) {
-    console.log('Attachingfiles');
-    console.log(embed);
-    console.log(image);
     if (image !== undefined) {
         let file = await download(image);
         let attachmentUrl = getItemAttachmentUrl(file);
@@ -234,17 +232,25 @@ async function downloadItemImage(image) {
     });
 }
 
-async function downloadPetImage(image) {
+async function downloadPetImage(petColors, image) {
     return axios({
         method: 'get'
         , url: `https://poppyseedpets.com/assets/images/pets/${image}.svg`
     }).then(res => {
         let fileName = getLocalPetImageFileName(image);
-        saveAsPng(res.data, getLocalPetImageFileName(image));
+        let coloredSvg = colorSvg(res.data, petColors);
+        saveAsPng(coloredSvg, getLocalPetImageFileName(image));
         return fileName;
     }).catch(err => {
         console.log(err);
     });
+}
+
+function colorSvg(svgBuffer, petColors) {
+    return svgBuffer.replace(
+        /(<svg.*?>)/
+        , `$1<style>.colorA { fill: #${petColors.colorA} } .colorB { fill: #${petColors.colorB} }</style>`
+    );
 }
 
 function saveAsPng(svgBuffer, image) {
@@ -252,7 +258,7 @@ function saveAsPng(svgBuffer, image) {
     const dir = path.dirname(image);
 
     if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, {recursive: true });
+        fs.mkdirSync(dir, { recursive: true });
     }
 
     sharp(buffer)
@@ -271,27 +277,34 @@ function getLocalItemImageFileName(image) {
 
 async function showPetShelter(msg, token) {
     const shelterPets = await getPetShelter(token);
-    msg.reply(showPetView(shelterPets));
+    const pets = await showPetsView(shelterPets);
+    pets.forEach(pet => msg.reply(pet));
 }
 
-function showPetsView(shelterPets) {
-    shelterPets.forEach(pet => showPetView(embed, pet));
-    return embed;
+async function showPetsView(pets) {
+    let embeds = [];
+
+    for (let i = 0; i < pets.length; i++) {
+        embeds.push(await showPetView(pets[i]));
+    }
+
+    return embeds;
 }
 
-function showPetView(pet) {
+async function showPetView(pet) {
+    const downloadPet = R.curry(downloadPetImage);
+    const petColors = {
+        colorA: pet.colorA,
+        colorB: pet.colorB
+    };
     let embed = new Discord.MessageEmbed()
-    .setColor('#0099ff')
-    .setTitle(pet.name)
-    .setDescription(showPetDescription(pet))
-    .setColor(pet.colorA)
-    attachFiles(downloadPetImage, embed, pet.image);
+        .setColor('#0099ff')
+        .setTitle(pet.name)
+        .setDescription(pet.birthDate);
+
+    await attachFiles(downloadPet(petColors), embed, pet.species.image);
 
     return embed;
-}
-
-function showPetDescription(pet) {
-    return `BirthDate: ${pet.birthDate}\n`;
 }
 
 async function getPetShelter(token) {
