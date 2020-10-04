@@ -5,6 +5,7 @@ const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 const R = require('ramda');
+const request = require('./request');
 
 const client = new Discord.Client();
 const discordToken = process.env.POPPYSEEDPETSBOTTOKEN;
@@ -108,7 +109,7 @@ function showHelp(message, token) {
 
 async function showTopDonors(message, token) {
     const donors =
-        await getTopDonors(token);
+        await request.sendRequest(token, request.getTopDonors);
 
     message.reply(donorView(donors));
 }
@@ -122,25 +123,14 @@ function donorView(users) {
     return message + "\n" + topDonors;
 }
 
-async function getTopDonors(token) {
-    return axios({
-        method: 'get'
-        , url: 'https://api.poppyseedpets.com/museum/topDonors?page=0'
-        , headers: {
-            'Authorization': 'Bearer ' + token
-        }
-    }).then(res => {
-        return res.data.data.results;
-    }).catch(err => {
-        console.log(err);
-    });
-}
-
 async function showLatestItems(message, token) {
-    const items = await getLatestItems(token);
+    const items = await request.sendRequest(token, request.getLatestItems);
     const results = await itemsView(items);
 
-    results.forEach(item => message.reply(item));
+    for (let i = 0; i < results.length; i++) {
+        let item = results[i];
+        message.reply(null, item);
+    }
 }
 
 async function itemsView(items) {
@@ -176,7 +166,10 @@ async function itemView(item) {
 
     await attachFiles(downloadItemImage, embed, image);
 
-    return embed;
+    return {
+        embed: embed,
+        content: name
+    };
 }
 
 async function attachFiles(download, embed, image) {
@@ -196,20 +189,6 @@ function joinStr(delimiter) {
 }
 
 
-async function getLatestItems(token) {
-    return axios({
-        method: 'get'
-        , url: 'https://api.poppyseedpets.com/encyclopedia/item?page=0&orderBy=id&orderDir=reverse'
-        , headers: {
-            'Authorization': 'Bearer ' + token
-        }
-    }).then(res => {
-        return res.data.data.results;
-    }).catch(err => {
-        console.log(err);
-    });
-}
-
 function getItemImageUrl(image) {
     return `https://poppyseedpets.com/assets/images/items/${image}.svg`;
 }
@@ -218,14 +197,20 @@ function getItemAttachmentUrl(image) {
     return `attachment://${path.basename(image)}`
 }
 
+
 async function downloadItemImage(image) {
+    let fileName = getLocalItemImageFileName(image);
+
+    if(fs.existsSync(fileName)){
+        return new Promise((res) => res(fileName));
+    }
+
     return axios({
         method: 'get'
         , url: `https://poppyseedpets.com/assets/images/items/${image}.svg`
-    }).then(res => {
-        let fileName = getLocalItemImageFileName(image);
+    }).then(async res => {
         console.log('Filename: ' + fileName);
-        saveAsPng(res.data, fileName);
+        await saveAsPng(res.data, fileName);
         return fileName;
     }).catch(err => {
         console.log(err);
@@ -233,13 +218,18 @@ async function downloadItemImage(image) {
 }
 
 async function downloadPetImage(petColors, image) {
+    let fileName = getLocalPetImageFileName(image);
+
+    if(fs.existsSync(fileName)){
+        return new Promise((res) => res(fileName));
+    }
+
     return axios({
         method: 'get'
         , url: `https://poppyseedpets.com/assets/images/pets/${image}.svg`
-    }).then(res => {
-        let fileName = getLocalPetImageFileName(image);
+    }).then(async res => {
         let coloredSvg = colorSvg(res.data, petColors);
-        saveAsPng(coloredSvg, getLocalPetImageFileName(image));
+        await saveAsPng(coloredSvg, fileName);
         return fileName;
     }).catch(err => {
         console.log(err);
@@ -261,8 +251,8 @@ function saveAsPng(svgBuffer, image) {
         fs.mkdirSync(dir, { recursive: true });
     }
 
-    sharp(buffer)
-        .resize(96, 96)
+    sharp(buffer, {density: 200})
+        .resize(100,100)
         .png()
         .toFile(image);
 }
@@ -276,7 +266,7 @@ function getLocalItemImageFileName(image) {
 }
 
 async function showPetShelter(msg, token) {
-    const shelterPets = await getPetShelter(token);
+    const shelterPets = await request.sendRequest(token, request.getPetShelter);
     const pets = await showPetsView(shelterPets);
     pets.forEach(pet => msg.reply(pet));
 }
@@ -305,18 +295,4 @@ async function showPetView(pet) {
     await attachFiles(downloadPet(petColors), embed, pet.species.image);
 
     return embed;
-}
-
-async function getPetShelter(token) {
-    return axios({
-        method: 'get'
-        , url: 'https://api.poppyseedpets.com/pet?page=0&filter%5Bowner%5D=199&filter%5BinDaycare%5D=true'
-        , headers: {
-            'Authorization': 'Bearer ' + token
-        }
-    }).then(res => {
-        return res.data.data.results;
-    }).catch(err => {
-        console.log(err);
-    });
 }
