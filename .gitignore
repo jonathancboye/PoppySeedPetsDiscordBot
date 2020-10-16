@@ -3,3 +3,5 @@ launch.json
 pets
 items
 .idea
+env.list
+tasks.json
