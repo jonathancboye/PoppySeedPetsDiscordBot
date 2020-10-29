@@ -109,7 +109,7 @@ function showHelp(message, token) {
 
 async function showTopDonors(message, token) {
     const donors =
-        await request.sendRequest(token, request.getTopDonors);
+        await request.getTopDonors(token);
 
     message.reply(donorView(donors));
 }
@@ -124,7 +124,7 @@ function donorView(users) {
 }
 
 async function showLatestItems(message, token) {
-    const items = await request.sendRequest(token, request.getLatestItems);
+    const items = await request.getLatestItems(token);
     const results = await itemsView(items);
 
     for (let i = 0; i < results.length; i++) {
@@ -209,7 +209,6 @@ async function downloadItemImage(image) {
         method: 'get'
         , url: `https://poppyseedpets.com/assets/images/items/${image}.svg`
     }).then(async res => {
-        console.log('Filename: ' + fileName);
         await saveAsPng(res.data, fileName);
         return fileName;
     }).catch(err => {
@@ -266,7 +265,7 @@ function getLocalItemImageFileName(image) {
 }
 
 async function showPetShelter(msg, token) {
-    const shelterPets = await request.sendRequest(token, request.getPetShelter);
+    const shelterPets = await request.getPetShelter(token);
     const pets = await showPetsView(shelterPets);
     pets.forEach(pet => msg.reply(pet));
 }
