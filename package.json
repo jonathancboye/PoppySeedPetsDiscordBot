@@ -12,11 +12,11 @@
     "discord.js": "^12.2.0",
     "axios": "^0.19.2",
     "ramda": "^0.27.0",
-    "sharp": "^0.25.3"
+    "sharp": "^0.30.5"
   },
   "devDependencies": {
     "axios": "^0.19.2",
     "ramda": "^0.27.0",
-    "sharp": "^0.25.3"
+    "sharp": "^0.30.5"
   }
 }
